@@ -1,68 +1,47 @@
+mod terminal;
+
 use crossterm::event::{read, Event, Event::Key, KeyCode::Char, KeyEvent, KeyModifiers};
-use crossterm::terminal::{self, disable_raw_mode, enable_raw_mode, Clear, ClearType};
-use crossterm::execute;
-use crossterm::cursor::MoveTo;
-use std::io::stdout;
+use terminal::Terminal;
 
 pub struct Editor {
     quitting: bool, 
 }
 
 impl Editor {
-
     pub fn default() -> Self {
         Editor{
             quitting: false, 
         }
     }
 
-    fn clear_screen() -> Result<(), std::io::Error> {
-        execute!(stdout(), Clear(ClearType::All))
-    }
-
     fn draw_tildes() -> Result<(), std::io::Error> {
-        let (cols, rows) = terminal::size()?;
+        let (_cols, rows) = Terminal::size()?;
         for i in 0..rows {
             print!("~");
-            if i < rows - 1{
-                print!("\n");
+            if i < (rows - 1) {
+                print!("\r\n");
             }
         }
         Ok(())
     }
 
-    fn move_cursor(x: u16, y: u16) -> Result<(), std::io::Error> {
-        execute!(stdout(), MoveTo(x, y))
-    }
-
-    fn initialize() -> Result<(), std::io::Error> {
-        enable_raw_mode()?;
-        Self::clear_screen()?;
-        Self::move_cursor(0, 0)?;
-        Ok(())
-    }
-
-    fn terminate() -> Result<(), std::io::Error> {
-        disable_raw_mode()
-    }
-
     fn refresh_screen(&self) -> Result<(), std::io::Error> {
         if self.quitting {
-            Self::clear_screen()?;
+            Terminal::clear_screen()?;
             println!("End of editing! Byebye~");
         } else {
             Self::draw_tildes()?;
-            Self::move_cursor(0, 0)?;
+            Terminal::move_cursor(0, 0)?;
         }
         Ok(())
     }
     
     pub fn run(&mut self) {
-        Self::initialize().unwrap();
+        Terminal::initialize().unwrap();
         if let Err(err) = self.repl() {
             panic!("{err:#?}");
         }
-        Self::terminate().unwrap();
+        Terminal::terminate().unwrap();
     }
 
     fn evaluate_event(&mut self, event: &Event) {
@@ -84,7 +63,6 @@ impl Editor {
             let event = read()?;
             self.evaluate_event(&event);
         }
-        disable_raw_mode()?;
         Ok(())
     }
 }
