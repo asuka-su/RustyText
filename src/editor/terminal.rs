@@ -5,6 +5,7 @@ use crossterm::{
     style::Print, 
 };
 use std::io::{stdout, Error, Write};
+use std::fmt::Display;
 
 pub struct Terminal {
 
@@ -50,7 +51,7 @@ impl Terminal {
         stdout().flush()
     }
 
-    pub fn print(s: &str) -> Result<(), Error> {
+    pub fn print<T: Display>(s: T) -> Result<(), Error> {
         queue!(stdout(), Print(s))
     }
 }

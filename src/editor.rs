@@ -16,10 +16,24 @@ impl Editor {
     }
 
     fn draw_tildes() -> Result<(), Error> {
-        let (_cols, rows) = Terminal::size()?;
+        let (cols, rows) = Terminal::size()?;
         for i in 0..rows {
             Terminal::clear_line()?;
-            Terminal::print("~")?;
+            if i == rows / 3 {
+                let s = "Welcome to RustyText!";
+                let len = s.len();
+                let cols = cols as usize;
+                let padding = if cols > len {
+                    " ".repeat((cols - len) / 2)
+                } else {
+                    String::new()
+                };
+                let mut welcome = format!("~{padding}{s}");
+                welcome.truncate(cols);
+                Terminal::print(welcome)?;
+            } else {
+                Terminal::print("~")?;
+            }
             if i < (rows - 1) {
                 Terminal::print("\r\n")?;
             }
