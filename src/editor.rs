@@ -2,6 +2,7 @@ mod terminal;
 
 use crossterm::event::{read, Event, Event::Key, KeyCode::Char, KeyEvent, KeyModifiers};
 use terminal::Terminal;
+use std::io::Error;
 
 pub struct Editor {
     quitting: bool, 
@@ -14,25 +15,29 @@ impl Editor {
         }
     }
 
-    fn draw_tildes() -> Result<(), std::io::Error> {
+    fn draw_tildes() -> Result<(), Error> {
         let (_cols, rows) = Terminal::size()?;
         for i in 0..rows {
-            print!("~");
+            Terminal::clear_line()?;
+            Terminal::print("~")?;
             if i < (rows - 1) {
-                print!("\r\n");
+                Terminal::print("\r\n")?;
             }
         }
         Ok(())
     }
 
-    fn refresh_screen(&self) -> Result<(), std::io::Error> {
+    fn refresh_screen(&self) -> Result<(), Error> {
+        Terminal::hide_cursor()?;
         if self.quitting {
             Terminal::clear_screen()?;
-            println!("End of editing! Byebye~");
+            Terminal::print("End of editing! Byebye~\r\n")?;
         } else {
             Self::draw_tildes()?;
             Terminal::move_cursor(0, 0)?;
         }
+        Terminal::show_cursor()?;
+        Terminal::flush()?;
         Ok(())
     }
     
@@ -54,7 +59,7 @@ impl Editor {
         }
     }
 
-    fn repl(&mut self) -> Result<(), std::io::Error> {
+    fn repl(&mut self) -> Result<(), Error> {
         loop {
             self.refresh_screen()?;
             if self.quitting {
