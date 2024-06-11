@@ -2,9 +2,9 @@ use super::terminal::Terminal;
 use std::io::Error;
 use std::fs::read_to_string;
 
-#[derive(Default)]
 pub struct View {
     buffer: Buffer, 
+    pub redraw: bool, 
 }
 
 #[derive(Default)]
@@ -28,10 +28,16 @@ impl Buffer {
 }
 
 impl View {
+    fn render_line(row: u16, text: &str) -> Result<(), Error> {
+        Terminal::move_cursor(0, row)?;
+        Terminal::clear_line()?;
+        Terminal::print(text)?;
+        Ok(())
+    }
+
     fn render_welcome() -> Result<(), Error> {
         let (cols, rows) = Terminal::size()?;
         for i in 0..rows {
-            Terminal::clear_line()?;
             if i == rows / 3 {
                 let s = "Welcome to RustyText!";
                 let len = s.len();
@@ -43,45 +49,54 @@ impl View {
                 };
                 let mut welcome = format!("~{padding}{s}");
                 welcome.truncate(cols);
-                Terminal::print(&welcome)?;
+                Self::render_line(i, &welcome)?;
             } else {
-                Terminal::print("~")?;
-            }
-            if i < (rows - 1) {
-                Terminal::print("\r\n")?;
+                Self::render_line(i, "~")?;
             }
         }
         Ok(())
     }
 
     fn render_buffer(&self) -> Result<(), Error> {
-        let (.., rows) = Terminal::size()?;
+        let (cols, rows) = Terminal::size()?;
         for i in 0..rows {
-            Terminal::clear_line()?;
             if let Some(line) = self.buffer.lines.get(i as usize) {
-                Terminal::print(line)?;
+                let truncate_line = if line.len() >= cols as usize {
+                    &line[0..cols as usize]
+                } else { line };
+                Self::render_line(i, truncate_line)?;
             } else {
-                Terminal::print("~")?;
-            }
-            if i < (rows - 1) {
-                Terminal::print("\r\n")?;
+                Self::render_line(i, "~")?;
             }
         }
         Ok(())
     }
 
-    pub fn render(&self) -> Result<(), Error> {
+    pub fn render(&mut self) -> Result<(), Error> {
+        if !self.redraw {
+            return Ok(());
+        }
         if self.buffer.empty() {
             Self::render_welcome()?;
         } else {
             self.render_buffer()?;
         }
+        self.redraw = false;
         Ok(())
     }
 
     pub fn load(&mut self, file_name: &str){
         if let Ok(buffer) = Buffer::load(file_name) {
             self.buffer = buffer;
+        }
+    }
+}
+
+impl Default for View {
+    fn default() -> Self {
+        Self {
+            buffer: Buffer::default(), 
+            redraw: true, 
         }
     }
 }
