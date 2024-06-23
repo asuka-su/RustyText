@@ -139,7 +139,7 @@ impl View {
         self.scroll();
     }
     
-    pub fn redraw(&mut self) {
+    pub fn resize(&mut self) {
         self.scroll();
         self.redraw = true;
     }
@@ -149,18 +149,18 @@ impl View {
         let Location { x, y } = self.location;
 
         if y < self.offset.y {
-            self.offset.y = self.offset.y.saturating_sub(1);
+            self.offset.y = y;
             self.redraw = true;
         } else if y >= self.offset.y.saturating_add(rows) {
-            self.offset.y = self.offset.y.saturating_add(1);
+            self.offset.y = y.saturating_sub(rows).saturating_add(1);
             self.redraw = true;
         }
 
         if x < self.offset.x {
-            self.offset.x = self.offset.x.saturating_sub(1);
+            self.offset.x = x;
             self.redraw = true;
         } else if x >= self.offset.x.saturating_add(cols) {
-            self.offset.x = self.offset.x.saturating_add(1);
+            self.offset.x = x.saturating_sub(cols).saturating_add(1);
             self.redraw = true;
         }
     }

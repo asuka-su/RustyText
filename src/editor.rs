@@ -75,7 +75,7 @@ impl Editor {
                 }
             }, 
             Event::Resize(..) => {
-                self.view.redraw();
+                self.view.resize();
             }, 
             _ => (), 
         }
