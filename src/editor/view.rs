@@ -37,6 +37,15 @@ impl Buffer {
     pub fn empty(&self) -> bool {
         self.lines.is_empty()
     }
+
+    pub fn last_line(&self) -> u16 {
+        u16::try_from(self.lines.len()).unwrap_or_default()
+    }
+
+    pub fn last_char(&self, row: usize) -> u16 {
+        let len = if row >= self.lines.len() { 0 } else { self.lines[row].len() };
+        u16::try_from(len).unwrap_or_default()
+    }
 }
 
 impl View {
@@ -109,15 +118,19 @@ impl View {
         match code {
             KeyCode::Up => {
                 y = y.saturating_sub(1);
+                x = min(x, self.buffer.last_char(y as usize));
             }, 
             KeyCode::Down => {
                 y = y.saturating_add(1);
+                y = min(y, self.buffer.last_line());
+                x = min(x, self.buffer.last_char(y as usize));
             }, 
             KeyCode::Left => {
                 x = x.saturating_sub(1);
             }, 
             KeyCode::Right => {
                 x = x.saturating_add(1);
+                x = min(x, self.buffer.last_char(y as usize));
             }, 
             _ => (), 
         }
