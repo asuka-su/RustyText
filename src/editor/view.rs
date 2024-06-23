@@ -1,7 +1,7 @@
 use super::terminal::Terminal;
 use std::{
-    io::Error, 
-    fs::read_to_string, 
+    io::{Error, Write}, 
+    fs::{read_to_string, File}, 
     cmp::min, 
 };
 use crossterm::event::KeyCode;
@@ -22,27 +22,32 @@ pub struct View {
 #[derive(Default)]
 pub struct Buffer {
     pub lines: Vec<String>, 
+    file_name: Option<String>, 
 }
 
 impl Buffer {
-    pub fn load(file_name: &str) -> Result<Self, Error> {
+    fn load(file_name: &str) -> Result<Self, Error> {
         let contents = read_to_string(file_name)?;
         let mut temp = Vec::new();
         for lines in contents.lines() {
             temp.push(String::from(lines));
         }
-        Ok(Self{ lines: temp })
+
+        Ok(Self{
+            lines: temp, 
+            file_name: Some(file_name.to_string()), 
+        })
     }
 
-    pub fn empty(&self) -> bool {
+    fn empty(&self) -> bool {
         self.lines.is_empty()
     }
 
-    pub fn last_line(&self) -> u16 {
+    fn last_line(&self) -> u16 {
         u16::try_from(self.lines.len()).unwrap_or_default()
     }
 
-    pub fn last_char(&self, row: usize) -> u16 {
+    fn last_char(&self, row: usize) -> u16 {
         let len = if row >= self.lines.len() { 0 } else { self.lines[row].len() };
         u16::try_from(len).unwrap_or_default()
     }
@@ -55,6 +60,17 @@ impl Buffer {
         } else if let Some(line) = self.lines.get_mut(loc.y as usize){
             line.insert(loc.x as usize, character);
         }
+    }
+
+    fn save(&self) -> Result<(), Error> {
+        // cannot save if original file doesn't exist? why?
+        if let Some(file_name) = &self.file_name {
+            let mut file = File::create(file_name)?;
+            for line in &self.lines {
+                writeln!(file, "{line}")?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -182,6 +198,10 @@ impl View {
     pub fn insert(&mut self, character: char) {
         self.buffer.insert(character, self.location);
         self.redraw = true;
+    }
+
+    pub fn save(&self) {
+        let _ = self.buffer.save();
     }
 }
 

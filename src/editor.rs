@@ -68,10 +68,13 @@ impl Editor {
                     KeyCode::Char('q') if *modifiers == KeyModifiers::CONTROL => {
                         self.quitting = true;
                     },
+                    KeyCode::Char('s') if *modifiers == KeyModifiers::CONTROL => {
+                        self.view.save();
+                    }
                     KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
                         self.view.move_cursor_press(*code);
                     }, 
-                    KeyCode::Char(character) if *modifiers == KeyModifiers::NONE || *modifiers == KeyModifiers::SHIFT => {
+                    KeyCode::Char(character) if (*modifiers == KeyModifiers::NONE || *modifiers == KeyModifiers::SHIFT) => {
                         self.view.insert(*character);
                     }
                     _ => (),                 
