@@ -71,6 +71,9 @@ impl Editor {
                     KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
                         self.view.move_cursor_press(*code);
                     }, 
+                    KeyCode::Char(character) if *modifiers == KeyModifiers::NONE || *modifiers == KeyModifiers::SHIFT => {
+                        self.view.insert(*character);
+                    }
                     _ => (),                 
                 }
             }, 

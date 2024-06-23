@@ -46,6 +46,16 @@ impl Buffer {
         let len = if row >= self.lines.len() { 0 } else { self.lines[row].len() };
         u16::try_from(len).unwrap_or_default()
     }
+
+    fn insert(&mut self, character: char, loc: Location){
+        if (loc.y as usize) > self.lines.len() {   // Do not insert anything beyond the last line of file
+
+        } else if (loc.y as usize) == self.lines.len() {   // Push new line if insert in the last line of file
+            self.lines.push(character.to_string());
+        } else if let Some(line) = self.lines.get_mut(loc.y as usize){
+            line.insert(loc.x as usize, character);
+        }
+    }
 }
 
 impl View {
@@ -167,6 +177,11 @@ impl View {
 
     pub fn get_location(&self) -> (u16, u16) {
         (self.location.x - self.offset.x, self.location.y - self.offset.y)
+    }
+
+    pub fn insert(&mut self, character: char) {
+        self.buffer.insert(character, self.location);
+        self.redraw = true;
     }
 }
 
