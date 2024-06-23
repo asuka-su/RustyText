@@ -1,6 +1,6 @@
 use crossterm::{
     queue, 
-    terminal::{size, Clear, ClearType, disable_raw_mode, enable_raw_mode}, 
+    terminal::{size, Clear, ClearType, disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}, 
     cursor::{MoveTo, Hide, Show}, 
     style::Print, 
 };
@@ -31,11 +31,15 @@ impl Terminal {
     pub fn initialize() -> Result<(), Error> {
         Self::flush()?;
         enable_raw_mode()?;
+        queue!(stdout(), EnterAlternateScreen)?;
         Self::clear_screen()?;
         Self::move_cursor(0, 0)
     }
 
     pub fn terminate() -> Result<(), Error> {
+        queue!(stdout(), LeaveAlternateScreen)?;
+        Self::show_cursor()?;
+        Self::flush()?;
         disable_raw_mode()
     }
 

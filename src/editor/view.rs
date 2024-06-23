@@ -28,15 +28,15 @@ impl Buffer {
 }
 
 impl View {
-    fn render_line(row: u16, text: &str) -> Result<(), Error> {
-        Terminal::move_cursor(0, row)?;
-        Terminal::clear_line()?;
-        Terminal::print(text)?;
-        Ok(())
+    fn render_line(row: u16, text: &str) {
+        let _ = Terminal::move_cursor(0, row);
+        let _ = Terminal::clear_line();
+        let rst = Terminal::print(text);
+        debug_assert!(rst.is_ok(), "Failed to render line!");
     }
 
-    fn render_welcome() -> Result<(), Error> {
-        let (cols, rows) = Terminal::size()?;
+    fn render_welcome() {
+        let (cols, rows) = Terminal::size().unwrap_or_default();
         for i in 0..rows {
             if i == rows / 3 {
                 let s = "Welcome to RustyText!";
@@ -49,40 +49,37 @@ impl View {
                 };
                 let mut welcome = format!("~{padding}{s}");
                 welcome.truncate(cols);
-                Self::render_line(i, &welcome)?;
+                Self::render_line(i, &welcome);
             } else {
-                Self::render_line(i, "~")?;
+                Self::render_line(i, "~");
             }
         }
-        Ok(())
     }
 
-    fn render_buffer(&self) -> Result<(), Error> {
-        let (cols, rows) = Terminal::size()?;
+    fn render_buffer(&self) {
+        let (cols, rows) = Terminal::size().unwrap_or_default();
         for i in 0..rows {
             if let Some(line) = self.buffer.lines.get(i as usize) {
                 let truncate_line = if line.len() >= cols as usize {
                     &line[0..cols as usize]
                 } else { line };
-                Self::render_line(i, truncate_line)?;
+                Self::render_line(i, truncate_line);
             } else {
-                Self::render_line(i, "~")?;
+                Self::render_line(i, "~");
             }
         }
-        Ok(())
     }
 
-    pub fn render(&mut self) -> Result<(), Error> {
+    pub fn render(&mut self) {
         if !self.redraw {
-            return Ok(());
+            return;
         }
         if self.buffer.empty() {
-            Self::render_welcome()?;
+            Self::render_welcome();
         } else {
-            self.render_buffer()?;
+            self.render_buffer();
         }
         self.redraw = false;
-        Ok(())
     }
 
     pub fn load(&mut self, file_name: &str){

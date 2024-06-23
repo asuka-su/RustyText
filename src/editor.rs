@@ -4,7 +4,11 @@ mod view;
 use crossterm::event::{read, Event, Event::Key, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use terminal::Terminal;
 use view::View;
-use std::io::Error;
+use std::{
+    io::Error, 
+    env, 
+    panic::{set_hook, take_hook}, 
+};
 
 #[derive(Copy, Clone, Default)]
 struct Location {
@@ -12,7 +16,6 @@ struct Location {
     y: u16, 
 }
 
-#[derive(Default)]
 pub struct Editor {
     quitting: bool, 
     location: Location, 
@@ -21,8 +24,27 @@ pub struct Editor {
 
 impl Editor {
 
-    fn move_cursor_press(&mut self, code: KeyCode) -> Result<(), Error> {
-        let (cols, rows) = Terminal::size()?;
+    pub fn new() -> Result<Self, Error> {
+        let current_hook = take_hook();
+        set_hook(Box::new(move |panic_info| {
+            let _ = Terminal::terminate();
+            current_hook(panic_info);
+        }));
+        Terminal::initialize()?;
+        let mut view = View::default();
+        let args: Vec<String> = env::args().collect();
+        if let Some(file_name) = args.get(1) {
+            view.load(file_name);
+        }
+        Ok(Self {
+            quitting: false, 
+            location: Location::default(), 
+            view, 
+        })
+    }
+
+    fn move_cursor_press(&mut self, code: KeyCode) {
+        let (cols, rows) = Terminal::size().unwrap_or_default();
         let Location { mut x, mut y } = self.location;
 
         match code {
@@ -42,38 +64,33 @@ impl Editor {
         }
 
         self.location = Location { x, y };
-        Ok(())
     }
 
-    fn refresh_screen(&mut self) -> Result<(), Error> {
-        Terminal::hide_cursor()?;
-        Terminal::move_cursor(0, 0)?;
-        if self.quitting {
-            Terminal::clear_screen()?;
-            Terminal::print("End of editing! Byebye~\r\n")?;
-        } else {
-            self.view.render()?;
-            // currently can be done like this, window resizing?
-            Terminal::move_cursor(self.location.x, self.location.y)?;
-        }
-        Terminal::show_cursor()?;
-        Terminal::flush()?;
-        Ok(())
+    fn refresh_screen(&mut self) {
+        let _ = Terminal::hide_cursor();
+        self.view.render();
+        let _ = Terminal::move_cursor(self.location.x, self.location.y);
+        let _ = Terminal::show_cursor();
+        let _ = Terminal::flush();
     }
     
     pub fn run(&mut self) {
-        Terminal::initialize().unwrap();
-        let args: Vec<String> = std::env::args().collect();
-        if let Some(file_name) = args.get(1) {
-            self.view.load(file_name);
+        loop {
+            self.refresh_screen();
+            if self.quitting {
+                break;
+            }
+            match read() {
+                Ok(event) => self.evaluate_event(&event), 
+                Err(err) => { // panic only on Debug
+                    #[cfg(debug_assertions)]
+                    { panic!("Could not read event: {err:?}"); }
+                }
+            }
         }
-        if let Err(err) = self.repl() {
-            panic!("{err:#?}");
-        }
-        Terminal::terminate().unwrap();
     }
 
-    fn evaluate_event(&mut self, event: &Event) -> Result<(), Error> {
+    fn evaluate_event(&mut self, event: &Event) {
         match event {
             Key(KeyEvent{
                 code, modifiers, kind: KeyEventKind::Press, ..
@@ -83,7 +100,7 @@ impl Editor {
                         self.quitting = true;
                     },
                     KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
-                        self.move_cursor_press(*code)?;
+                        self.move_cursor_press(*code);
                     }, 
                     _ => (),                 
                 }
@@ -93,18 +110,14 @@ impl Editor {
             }, 
             _ => (), 
         }
-        Ok(())
     }
+}
 
-    fn repl(&mut self) -> Result<(), Error> {
-        loop {
-            self.refresh_screen()?;
-            if self.quitting {
-                break;
-            }
-            let event = read()?;
-            self.evaluate_event(&event)?;
+impl Drop for Editor {
+    fn drop(&mut self) {
+        let _ = Terminal::terminate();
+        if self.quitting {
+            let _ = Terminal::print("ByeBye~\r\nPresented by RUSTYTEXT\r\n");
         }
-        Ok(())
     }
 }
