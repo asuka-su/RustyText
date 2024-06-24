@@ -53,17 +53,40 @@ impl Buffer {
     }
 
     fn insert(&mut self, character: char, loc: Location){
-        if (loc.y as usize) > self.lines.len() {   // Do not insert anything beyond the last line of file
+        if loc.y as usize >= self.lines.len() {
+            self.lines.push(String::new());
+        }
 
-        } else if (loc.y as usize) == self.lines.len() {   // Push new line if insert in the last line of file
-            self.lines.push(character.to_string());
-        } else if let Some(line) = self.lines.get_mut(loc.y as usize){
-            line.insert(loc.x as usize, character);
+        if let Some(line) = self.lines.get_mut(loc.y as usize) {
+            if character == '\n' {
+                let new_line = line.split_off(loc.x as usize);
+                self.lines.insert((loc.y + 1) as usize, new_line);
+            } else {
+                line.insert(loc.x as usize, character);
+            }
+        }
+    }
+
+    fn delete(&mut self, loc: Location) {
+        if loc.y as usize >= self.lines.len() {
+            return;
+        }
+
+        if loc.x as usize >= self.lines[loc.y as usize].len() {
+            if loc.y as usize + 1 < self.lines.len() {
+                let next_line = self.lines.remove(loc.y as usize + 1);
+                if let Some(cur_line) = self.lines.get_mut(loc.y as usize) {
+                    cur_line.push_str(&next_line);
+                }
+            }
+        } else {
+            if let Some(line) = self.lines.get_mut(loc.y as usize) {
+                line.remove(loc.x as usize);
+            }
         }
     }
 
     fn save(&self) -> Result<(), Error> {
-        // cannot save if original file doesn't exist? why?
         if let Some(file_name) = &self.file_name {
             let mut file = File::create(file_name)?;
             for line in &self.lines {
@@ -195,8 +218,27 @@ impl View {
         (self.location.x - self.offset.x, self.location.y - self.offset.y)
     }
 
+    pub fn backspace(&mut self) {
+        if self.location.x > 0 {
+            self.location.x -= 1;
+            self.buffer.delete(self.location);
+            self.redraw = true;
+        } else if self.location.y > 0 {
+            self.location.y -= 1;
+            self.location.x = self.buffer.last_char(self.location.y as usize);
+            self.buffer.delete(self.location);
+            self.redraw = true;
+        }
+    }
+
     pub fn insert(&mut self, character: char) {
         self.buffer.insert(character, self.location);
+        if character == '\n' {
+            self.location.y += 1;
+            self.location.x = 0;
+        } else {
+            self.location.x += 1;
+        }
         self.redraw = true;
     }
 

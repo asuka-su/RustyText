@@ -16,7 +16,6 @@ pub struct Editor {
 }
 
 impl Editor {
-
     pub fn new() -> Result<Self, Error> {
         let current_hook = take_hook();
         set_hook(Box::new(move |panic_info| {
@@ -42,7 +41,7 @@ impl Editor {
         let _ = Terminal::show_cursor();
         let _ = Terminal::flush();
     }
-    
+
     pub fn run(&mut self) {
         loop {
             self.refresh_screen();
@@ -51,7 +50,7 @@ impl Editor {
             }
             match read() {
                 Ok(event) => self.evaluate_event(&event), 
-                Err(err) => { // panic only on Debug
+                Err(err) => {
                     #[cfg(debug_assertions)]
                     { panic!("Could not read event: {err:?}"); }
                 }
@@ -61,7 +60,7 @@ impl Editor {
 
     fn evaluate_event(&mut self, event: &Event) {
         match event {
-            Key(KeyEvent{
+            Key(KeyEvent {
                 code, modifiers, kind: KeyEventKind::Press, ..
             }) => {
                 match code {
@@ -70,14 +69,20 @@ impl Editor {
                     },
                     KeyCode::Char('s') if *modifiers == KeyModifiers::CONTROL => {
                         self.view.save();
-                    }
+                    },
                     KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
                         self.view.move_cursor_press(*code);
-                    }, 
-                    KeyCode::Char(character) if (*modifiers == KeyModifiers::NONE || *modifiers == KeyModifiers::SHIFT) => {
-                        self.view.insert(*character);
-                    }
-                    _ => (),                 
+                    },
+                    KeyCode::Char(c) if *modifiers == KeyModifiers::NONE || *modifiers == KeyModifiers::SHIFT => {
+                        self.view.insert(*c);
+                    },
+                    KeyCode::Backspace => {
+                        self.view.backspace();
+                    },
+                    KeyCode::Enter => {
+                        self.view.insert('\n');
+                    },
+                    _ => (),
                 }
             }, 
             Event::Resize(..) => {
